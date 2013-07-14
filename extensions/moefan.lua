@@ -68,12 +68,17 @@ Rouruan = sgs.CreateTriggerSkill{
 		local target = effect.to
 		local card = effect.card
 		if target and source then
-			if target:objectName() ~= source:objectName() then
+			--if target:objectName() ~= source:objectName() then
 				if card:isKindOf("IronChain") then
 					if target:hasSkill(self:objectName()) then
 						return true
 					end
 				end
+			--end
+		end
+		if card:isKindOf("SupplyShortage") then
+			if target:hasSkill(self:objectName()) then
+				return true
 			end
 		end
 		return false
@@ -174,7 +179,7 @@ sgs.LoadTranslationTable{
 	["moyfat"] = "馍胖",
 	["#moyfat"] = "红白油库里",
 	["Rouruan"] = "柔软",
-	[":Rouruan"] = "锁定技，铁索连环对你无效。",
+	[":Rouruan"] = "锁定技，铁索连环和兵粮寸断对你无效。",
 	["Youxian"] = "悠闲",
 	[":Youxian"] = "锁定技，装备区装备数少于你的角色对你造成的伤害-1;装备数多于你的角色对你造成的伤害+1。",
 	["Mopao"] = "馍炮",
