@@ -118,6 +118,7 @@ MopaoCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		source:loseMark("@mopao", 1)
 		source:throwAllHandCardsAndEquips()
+		room:broadcastInvoke("animate", "lightbox:$mopaofadong:2000")
 		local players = room:getOtherPlayers(source)
 		for _,player in sgs.qlist(players) do
 			local damage = sgs.DamageStruct()
@@ -184,6 +185,7 @@ sgs.LoadTranslationTable{
 	[":Youxian"] = "锁定技，装备区装备数少于你的角色对你造成的伤害-1;装备数多于你的角色对你造成的伤害+1。",
 	["Mopao"] = "馍炮",
 	[":Mopao"] = "限定技，出牌阶段，你可以弃置所有的牌，然后对所有角色依次造成1点伤害并令其翻面。结算完毕后你立即获得一个额外的回合。",
+	["$mopaofadong"] = "不能油库里的人类先孙通通去屎啊——！！！",
 	["designer:moyfat"] = "洩矢の呼啦圈"
 }
 		
