@@ -3,6 +3,7 @@ extension = sgs.Package("moefan")
 
 kakarot = sgs.General(extension, "kakarot", "moe", 3, false)
 moyfat = sgs.General(extension, "moyfat", "moe", 4, false)
+xiaojuese = sgs.General(extension, "xiaojuese", "moe", 4, false)
 
 --Skills of kakarot
 --深坑
@@ -18,6 +19,7 @@ Shenkeng = sgs.CreateTriggerSkill{
 		if e>=cnum then 
 			if (event==sgs.EventPhaseStart) and (player:getPhase () == sgs.Player_RoundStart) then
 				if room:askForSkillInvoke(player, self:objectName()) then
+					room:broadcastSkillInvoke(self:objectName())
 					room:askForDiscard(player, self:objectName(), cnum, cnum, false, true)
 					player:turnOver()
 				end
@@ -36,6 +38,7 @@ Choufeng = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if (event==sgs.TurnedOver) then
 			if room:askForSkillInvoke(player, self:objectName()) then
+				room:broadcastSkillInvoke(self:objectName())
 				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "choufeng-invoke", true, true)
 				local taghp = target:getHp()
 				local selfhp = player:getHp()
@@ -63,6 +66,7 @@ Rouruan = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Compulsory, 
 	events = {sgs.CardEffected},
 	on_trigger = function(self, event, player, data)
+		room = player:getRoom()
 		local effect = data:toCardEffect()
 		local source = effect.from
 		local target = effect.to
@@ -93,16 +97,18 @@ Youxian = sgs.CreateTriggerSkill{
 	name = "Youxian",  
 	frequency = sgs.Skill_Compulsory, 
 	events = {sgs.DamageInflicted},  
-	on_trigger = function(self, event, player, data) 
+	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local damage = data:toDamage()
 		local source = damage.from
 		local n1 = source:getEquips():length()
 		local n2 = player:getEquips():length()
 		if n1>n2 then
+			room:broadcastSkillInvoke(self:objectName())
 			damage.damage = damage.damage + 1
 			data:setValue(damage)
 		elseif n1<n2 then
+			room:broadcastSkillInvoke(self:objectName())
 			damage.damage = damage.damage - 1
 			data:setValue(damage)
 		end
@@ -116,6 +122,7 @@ MopaoCard = sgs.CreateSkillCard{
 	target_fixed = true,
 	will_throw = true,
 	on_use = function(self, room, source, targets)
+		room:broadcastSkillInvoke(self:objectName())
 		source:loseMark("@mopao", 1)
 		source:throwAllHandCardsAndEquips()
 		room:broadcastInvoke("animate", "lightbox:$mopaofadong:2000")
@@ -157,12 +164,79 @@ Mopao = sgs.CreateTriggerSkill{
 
 ---End of Skills of moyfat
 
+---Skills of xiaojuese
+Bingjian = sgs.CreateTriggerSkill{
+	name = "Bingjian",
+	frequency = sgs.Skill_NotFrequency,
+	events = {sgs.SlashProceed},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if room:askForSkillInvoke(player, self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			local judge = sgs.JudgeStruct()
+			judge.pattern = ".|red"
+			judge.good = false
+			judge.reason = self:objectName()
+			judge.who = player
+			room:judge(judge)
+			if judge:isGood() then
+				local effect = data:toSlashEffect()
+				local dest = effect.to
+				if not dest:isNude() and dest:isAlive() then
+					local to_throw = room:askForCardChosen(player, dest, "he", self:objectName())
+					local card = sgs.Sanguosha:getCard(to_throw)
+					room:throwCard(card, dest, player);
+					--return true
+				end
+				--return false
+			end
+		end
+		--return false
+	end
+}
+
+GongshuCard = sgs.CreateSkillCard{
+	name = "GongshuCard",
+	target_fixed = true,
+	will_throw = true,
+	on_use = function(self, room, source, targets)
+		room:setPlayerFlag(source, "InfinityAttackRange")
+	end,
+}
+
+Gongshu = sgs.CreateViewAsSkill{
+	name = "Gongshu",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		if #selected == 0 then
+			return true
+		end
+		return false
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = GongshuCard:clone()
+			card:addSubcard(cards[1])
+			card:setSkillName(self:objectName())
+			return card
+		end
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#GongshuCard")
+	end,
+}
+
+---End of Skills of xiaojuese
+
 kakarot:addSkill(Shenkeng)
 kakarot:addSkill(Choufeng)
 
 moyfat:addSkill(Rouruan)
 moyfat:addSkill(Youxian)
 moyfat:addSkill(Mopao)
+
+xiaojuese:addSkill(Bingjian)
+xiaojuese:addSkill(Gongshu)
 
 sgs.LoadTranslationTable{
 	["moe"] = "萌",
@@ -186,6 +260,16 @@ sgs.LoadTranslationTable{
 	["Mopao"] = "馍炮",
 	[":Mopao"] = "限定技，出牌阶段，你可以弃置所有的牌，然后对所有角色依次造成1点伤害并令其翻面。结算完毕后你立即获得一个额外的回合。",
 	["$mopaofadong"] = "不能油库里的人类先孙通通去屎啊——！！！",
-	["designer:moyfat"] = "洩矢の呼啦圈"
+	["@mopao"] = "馍炮",
+	["designer:moyfat"] = "洩矢の呼啦圈",
+	["xiaojuese"] = "小角色",
+	["#xiaojuese"] = "幻想漂流",
+	["Bingjian"] = "冰箭",
+	[":Bingjian"] = "你的【杀】指定一个目标后，你可以进行一次判定，若结果为黑，你可以弃置其一张牌。",
+	["Gongshu"] = "弓术",
+	["gongshu"] = "弓术",
+	[":Gongshu"] = "出牌阶段，你可以弃置一张牌令你于此回合内攻击范围无限。",
+	["designer:xiaojuese"] = "洩矢の呼啦圈",
+	["illustrator:xiaojuese"] = "小角色",
 }
 		
