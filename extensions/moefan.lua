@@ -3,7 +3,7 @@ extension = sgs.Package("moefan")
 
 kakarot = sgs.General(extension, "kakarot", "moe", 3, false)
 moyfat = sgs.General(extension, "moyfat", "moe", 4, false)
-xiaojuese = sgs.General(extension, "xiaojuese", "moe", 4, false)
+xiaojuese = sgs.General(extension, "xiaojuese", "moe", 3, false)
 
 --Skills of kakarot
 --深坑
@@ -43,15 +43,15 @@ Choufeng = sgs.CreateTriggerSkill{
 				local taghp = target:getHp()
 				local selfhp = player:getHp()
 				if taghp > selfhp then
-					room:damage(sgs.DamageStruct(self:objectName(), player, target, 1))
 					if (target:getEquips():length() > 0) or (target:getHandcards():length() > 0)  then
 						local to_throw = room:askForCardChosen(player, target, "choufeng_drop", self:objectName())
 						local card = sgs.Sanguosha:getCard(to_throw)
 						room:throwCard(card, target, player);
 					end
+					room:damage(sgs.DamageStruct(self:objectName(), player, target, 1))
 				else
-					room:recover(target, sgs.RecoverStruct())
 					target:drawCards(1)
+					room:recover(target, sgs.RecoverStruct())
 				end
 			end
 		end
@@ -165,6 +165,7 @@ Mopao = sgs.CreateTriggerSkill{
 ---End of Skills of moyfat
 
 ---Skills of xiaojuese
+--冰箭
 Bingjian = sgs.CreateTriggerSkill{
 	name = "Bingjian",
 	frequency = sgs.Skill_NotFrequency,
@@ -195,6 +196,7 @@ Bingjian = sgs.CreateTriggerSkill{
 	end
 }
 
+--弓术
 GongshuCard = sgs.CreateSkillCard{
 	name = "GongshuCard",
 	target_fixed = true,
@@ -226,6 +228,23 @@ Gongshu = sgs.CreateViewAsSkill{
 	end,
 }
 
+--绘想
+Huixiang = sgs.CreateTriggerSkill{
+	name = "Huixiang",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Damaged},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if room:askForSkillInvoke(player, self:objectName(), data) then
+			room:drawCards(player, 1, self:objectName())
+			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName())
+			if not target:faceUp() then
+				target:turnOver()
+			end
+		end
+	end
+}
+
 ---End of Skills of xiaojuese
 
 kakarot:addSkill(Shenkeng)
@@ -237,6 +256,7 @@ moyfat:addSkill(Mopao)
 
 xiaojuese:addSkill(Bingjian)
 xiaojuese:addSkill(Gongshu)
+xiaojuese:addSkill(Huixiang)
 
 sgs.LoadTranslationTable{
 	["moe"] = "萌",
@@ -269,6 +289,9 @@ sgs.LoadTranslationTable{
 	["Gongshu"] = "弓术",
 	["gongshu"] = "弓术",
 	[":Gongshu"] = "出牌阶段，你可以弃置一张牌令你于此回合内攻击范围无限。",
+	["Huixiang"] = "绘想",
+	["huixiang"] = "绘想",
+	[":Huixiang"] = "其他角色对你造成1点伤害后，你可以摸一张牌并指定一名角色翻至正面朝上。",
 	["designer:xiaojuese"] = "洩矢の呼啦圈",
 	["illustrator:xiaojuese"] = "小角色",
 }
