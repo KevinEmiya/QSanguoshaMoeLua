@@ -4,6 +4,8 @@ extension = sgs.Package("moefan")
 kakarot = sgs.General(extension, "kakarot", "moe", 3, false)
 moyfat = sgs.General(extension, "moyfat", "moe", 4, false)
 xiaojuese = sgs.General(extension, "xiaojuese", "moe", 3, false)
+aide = sgs.General(extension, "aide", "moe", 4, true)
+dailing = sgs.General(extension, "dailing", "moe", 4, false)
 
 --Skills of kakarot
 --深坑
@@ -237,15 +239,130 @@ Huixiang = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if room:askForSkillInvoke(player, self:objectName(), data) then
 			room:drawCards(player, 1, self:objectName())
-			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName())
-			if not target:faceUp() then
-				target:turnOver()
+			local players = room:getAlivePlayers()
+			local all_players_fu = true
+			for _,tplayer in sgs.qlist(players) do
+				if not tplayer:faceUp() then
+					all_players_fu = false
+				end
+			end
+			if not all_players_fu then
+				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName())
+				if not target:faceUp() then
+					target:turnOver()
+				end
 			end
 		end
 	end
 }
 
 ---End of Skills of xiaojuese
+
+---Skills of aide
+KuangjuanCard = sgs.CreateSkillCard{
+	name = "KuangjuanCard", 
+	target_fixed = false, 
+	will_throw = false, 
+	filter = function(self, targets, to_select) 
+		return (#targets == 0) and (not to_select:isKongcheng())
+	end,
+	on_use = function(self, room, source, targets) 
+		local success = source:pindian(targets[1], self:objectName(), nil)
+		if success then
+			room:damage(sgs.DamageStruct(self:objectName(), source, targets[1]))
+			targets[1]:drawCards(1)
+		else
+			room:loseHp(source, 1)
+			--if source:isAlive() then
+			--	source:drawCards(1)
+			--end
+		end
+	end
+}
+Kuangjuan = sgs.CreateViewAsSkill{
+	name = "Kuangjuan",
+	n = 0,
+	view_as = function()
+		return KuangjuanCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return not player:isKongcheng()
+	end
+}
+---End of Skills of aide
+
+---Skills of dailing
+--不幸
+Buxing = sgs.CreateTriggerSkill{
+	name = "Buxing",
+	frequency = sgs.Skill_Compulsory, 
+	events = {sgs.FinishJudge},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local judge = data:toJudge()
+		local card = judge.card
+			if card:isRed() then
+				local count = player:getCardCount(true)
+					if count > 0 then
+						room:askForDiscard(player, self:objectName(), 1, 1, false, true)
+					end
+			end
+	end,
+}
+
+--抚慰
+Fuwei = sgs.CreateTriggerSkill{
+	name = "Fuwei",
+	frequency = sgs.Skill_NotFrequent, 
+	events = {sgs.CardsMoveOneTime}, 
+	on_trigger = function(self, event, player, data) 
+		local room = player:getRoom()
+		local move = data:toMoveOneTime()
+		local source = move.from
+		local place = move.from_places:at(0)
+		local cnum = move.card_ids:length()
+		if source and source:objectName() == player:objectName() then
+			if player:hasSkill(self:objectName()) then
+				if player:getPhase() == sgs.Player_NotActive or player:getPhase() == sgs.Player_Judge then
+					if place == sgs.Player_PlaceEquip or place == sgs.Player_PlaceHand or place == sgs.Player_PlaceDelayedTrick then
+						if player:askForSkillInvoke(self:objectName(), data) then
+							local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "fuwei-invoke", true, true)
+							target:drawCards(cnum)
+						end
+					end
+				end
+			end
+		end
+	end,
+}
+
+--色气
+Seqi = sgs.CreateTriggerSkill{
+	name = "Seqi",
+	frequency = sgs.Skill_Compulsory, 
+	events = {sgs.HpRecover}, 
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local recover = data:toRecover()
+		local source = recover.who
+		local count = recover.recover
+		if source then
+			if source:objectName() ~= player:objectName() then
+			local judge = sgs.JudgeStruct()
+			judge.pattern = ".|heart"
+			judge.good = true
+			judge.reason = self:objectName()
+			judge.who = player
+			room:judge(judge)
+			if judge:isGood() then
+				room:recover(source, sgs.RecoverStruct())
+			end
+			end
+		end
+	end,
+}
+
+---End of Skills of dailing
 
 kakarot:addSkill(Shenkeng)
 kakarot:addSkill(Choufeng)
@@ -257,6 +374,12 @@ moyfat:addSkill(Mopao)
 xiaojuese:addSkill(Bingjian)
 xiaojuese:addSkill(Gongshu)
 xiaojuese:addSkill(Huixiang)
+
+aide:addSkill(Kuangjuan)
+
+dailing:addSkill(Buxing)
+dailing:addSkill(Seqi)
+dailing:addSkill(Fuwei)
 
 sgs.LoadTranslationTable{
 	["moe"] = "萌",
@@ -291,8 +414,24 @@ sgs.LoadTranslationTable{
 	[":Gongshu"] = "出牌阶段，你可以弃置一张牌令你于此回合内攻击范围无限。",
 	["Huixiang"] = "绘想",
 	["huixiang"] = "绘想",
-	[":Huixiang"] = "其他角色对你造成1点伤害后，你可以摸一张牌并指定一名角色翻至正面朝上。",
+	[":Huixiang"] = "其他角色对你造成1次伤害后，你可以摸一张牌并指定一名角色翻至正面朝上。",
 	["designer:xiaojuese"] = "洩矢の呼啦圈",
 	["illustrator:xiaojuese"] = "小角色",
+	["aide"] = "爱德",
+	["#aide"] = "狂之绘士",
+	["Kuangjuan"] = "狂卷",
+	[":Kuangjuan"] = "出牌阶段，你可以和一名其他角色拼点。若你赢，你对其造成1点伤害，然后该角色摸一张牌；若你没赢，你流失1点体力。",
+	["designer:aide"] = "洩矢の呼啦圈",
+	["illustrator:aide"] = "爱德",
+	["KuangjuanCard"] = "狂卷拼点牌",
+	["dailing"] = "呆零",
+	["#dailing"] = "夜勤病栋",
+	["Buxing"] = "不幸",
+	[":Buxing"] = "锁定技，在你的判定生效后，若判定牌为红色，你须立即弃置一张牌。",
+	["Fuwei"] = "抚慰",
+	[":Fuwei"] = "每当你于判定阶段或回合外失去或弃置牌时，你可以指定一名其他角色摸等量的牌。",
+	["fuwei-invoke"] = "请指定一名其他角色摸等量的牌",
+	["Seqi"] = "色气",
+	[":Seqi"] = "锁定技，其他角色令你回复一次体力时，你须进行一次判定。若结果为红桃，在判定结算完毕后该角色回复一点体力。",
 }
 		
